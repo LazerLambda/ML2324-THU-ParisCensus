@@ -1,0 +1,11 @@
+accelerate
+hydra-core
+torch
+transformers
+datasets
+pandas
+numpy
+Pillow
+torchmetrics
+torchvision
+wandb

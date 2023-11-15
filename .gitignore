@@ -1,0 +1,7 @@
+.venv/
+.outputs/
+.mlruns/*
+.wandb/*
+
+__pycache__/*
+*.pyc

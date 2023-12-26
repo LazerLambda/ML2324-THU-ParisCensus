@@ -39,6 +39,7 @@ def get_dataset(dataset_identifier: str, processor: Any, tokenizer: PreTrainedTo
     :returns: Pre-processed dataset.
     """
     dataset: DatasetDict = load_dataset(dataset_identifier)
+    dataset = dataset.map(lambda e: {'image': e['image'] if e['image'].mode == 'RGB' else e['image'].convert('RGB'), 'text': e['text']})
     if debug:
         logging.info("Truncate dataset to 30 samples.")
         dataset = DatasetDict({k:Dataset.from_dict(dict(v[0:3])) for k,v in dataset.items()})

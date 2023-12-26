@@ -14,8 +14,8 @@ augment:
 
 training_configs:
   epochs: 10
-  per_device_train_batch_size: 1
-  per_device_eval_batch_size: 1
+  per_device_train_batch_size: 64
+  per_device_eval_batch_size: 128
   logging_steps: 2
   save_steps: 10000
   eval_steps: 1000

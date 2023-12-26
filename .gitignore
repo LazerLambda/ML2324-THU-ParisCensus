@@ -1,7 +1,9 @@
 .venv/
-.outputs/
-.mlruns/*
-.wandb/*
+outputs/
+mlruns/*
+wandb/*
 
 __pycache__/*
 *.pyc
+.env
+model_tuned/*

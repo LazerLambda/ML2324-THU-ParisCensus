@@ -48,11 +48,11 @@ def main(cfg: DictConfig) -> None:
 
 
     # TODO: To config
-    dataset: DatasetDict = get_dataset("agomberto/FrenchCensus-handwritten-texts", processor, tokenizer, cfg.debug)
+    dataset: DatasetDict = get_dataset("agomberto/FrenchCensus-handwritten-texts", processor, tokenizer, cfg.augment.augment, cfg.augment.aug_incr, cfg.debug)
     dataset_train: torch_dataset = dataset["train"].with_format("torch")
     dataset_test: torch_dataset = dataset["test"].with_format("torch")
 
-    # Set Beam-Search Params
+    # # Set Beam-Search Params
     model.config.eos_token_id = tokenizer.eos_token_id
     model.config.max_length = cfg.nlg_configs.max_length
     model.config.early_stopping = cfg.nlg_configs.early_stopping
@@ -86,31 +86,17 @@ def main(cfg: DictConfig) -> None:
         eval_dataset=dataset_test,
         data_collator=default_data_collator,
     )
+
     trainer.train()
     metrics: dict = trainer.evaluate()
     logging.info(metrics)
+    wandb.log(metrics)
 
     # Save Model
-    pathlib.Path(cfg.training_configs.target_folder).mkdir(parents=True, exist_ok=True)
-    model.save_pretrained(cfg.training_configs.target_folder)
-    logging.info(f"Saved model at: {cfg.training_configs.target_folder}")
+    pathlib.Path(cfg.training_configs.target_path).mkdir(parents=True, exist_ok=True)
+    model.save_pretrained(cfg.training_configs.target_path)
+    logging.info(f"Saved model at: {cfg.training_configs.target_path}")
 
-    # TODO:Remove
-    # let's perform inference on an image
-    # image = Image.open(os.path.join(cfg.paths.path_images, "959.jpg")).convert(
-    #     "RGB"
-    # )
-    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # pixel_values = processor(image, return_tensors="pt").pixel_values.to(
-    #     device
-    # )
-
-    # # autoregressively generate caption (uses greedy decoding by default)
-    # generated_ids = model.generate(pixel_values)
-    # generated_text = tokenizer.batch_decode(
-    #     generated_ids, skip_special_tokens=False
-    # )[0]
-    # logging.info("Generated Text: <" + str(generated_text) + ">")
     wandb.finish()
 
 if __name__ == "__main__":

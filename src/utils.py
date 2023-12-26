@@ -15,13 +15,13 @@ import typing
 
 import pandas as pd
 import torch
-from datasets import Dataset
+from datasets import Dataset, concatenate_datasets, DatasetDict, load_dataset, Dataset
 from transformers.tokenization_utils_fast import PreTrainedTokenizerFast
 from tokenizers import (Tokenizer, decoders, models, pre_tokenizers,
                         processors, trainers)
-from torchmetrics import CharErrorRate
+# from torchmetrics import CharErrorRate
+from torchmetrics.text import CharErrorRate
 from transformers import PreTrainedTokenizerFast
-from datasets import DatasetDict, load_dataset, Dataset
 
 
 def get_dataset(dataset_identifier: str, processor: Any, tokenizer: PreTrainedTokenizerFast, augmentation: bool = False, aug_incr: int = 4,debug: bool = False) -> DatasetDict:
@@ -41,25 +41,17 @@ def get_dataset(dataset_identifier: str, processor: Any, tokenizer: PreTrainedTo
     dataset: DatasetDict = load_dataset(dataset_identifier)
     if debug:
         logging.info("Truncate dataset to 30 samples.")
-        dataset = DatasetDict({k:Dataset.from_dict(dict(v[0:5])) for k,v in dataset.items()})
+        dataset = DatasetDict({k:Dataset.from_dict(dict(v[0:3])) for k,v in dataset.items()})
     if augmentation:
         logging.info("Apply Augmentation")
         logging.info("Augmentation will increase the dataset by a factor of %d.", aug_incr)
-        augmentation, converter = build_augmentation()
-
-        # Extend dataset
-        orig_images, orig_texts = copy.deepcopy(dataset["train"]['image']), copy.deepcopy(dataset["train"]['text'])
-        new_images: Dataset = dataset["train"]['image'] * (aug_incr - 1)
-        new_texts: Dataset = dataset["train"]['text'] * (aug_incr - 1)
-        # Apply augmentaton
-        dataset_train: Dataset = Dataset({'image': new_images, 'text': new_texts}).map(lambda e: {
-            'image':apply_augmentation(e['image'], augmentation, converter), 'text': e['text']})
-        raise Exception()
-        dataset_new: Dataset = Dataset({'image': dataset_train['image'] + orig_images, 'text': dataset_train['text'] + orig_texts})
-        dataset["train"] = dataset_new.shuffle()
+        converter, augmentation, piler = build_augmentation()
+        new_data: Dataset = concatenate_datasets([dataset["train"]] * aug_incr)
+        dataset_train = new_data.map(lambda e: {'image':apply_augmentation(e['image'], augmentation, converter, piler), 'text': e['text']})
+        dataset["train"] = dataset_train.shuffle()
     dataset = dataset.map(lambda e: {
-        "pixel_values": processor(e['image'], return_tensors="pt").pixel_values.squeeze(),
-        "labels": tokenizer(e['text'], return_tensors="pt", padding="max_length").input_ids})
+    "pixel_values": processor(e['image'], return_tensors="pt").pixel_values.squeeze(),
+    "labels": tokenizer(e['text'], return_tensors="pt", padding="max_length").input_ids.squeeze()})
     dataset = dataset.remove_columns(["image", "text"])
     dataset = dataset.with_format("torch")
     logging.info("Dataset loaded and processed")
@@ -104,12 +96,14 @@ def build_augmentation(
         transforms.RandomErasing(p=p_rand_err),
     )
     augment[3] = torch.jit.script(augment_3)
+    augment[4] = lambda e: e
     converter: Callable = transforms.ToTensor()
-    return converter, augment
+    piler: Callable = transforms.ToPILImage()
+    return converter, augment, piler 
 
-def apply_augmentation(img: Any, augment: Dict[int, Callable], converter: Callable) -> Any:
+def apply_augmentation(img: Any, augment: Dict[int, Callable], converter: Callable, piler: Callable) -> Any:
     choice: int = np.random.choice(range(len(augment.keys())))
-    return augment[choice](converter(img))
+    return piler(augment[choice](converter(img)))
 
 
 class CERMetric:

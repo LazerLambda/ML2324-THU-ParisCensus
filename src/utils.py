@@ -23,6 +23,17 @@ from tokenizers import (Tokenizer, decoders, models, pre_tokenizers,
 from torchmetrics.text import CharErrorRate
 from transformers import PreTrainedTokenizerFast
 
+def resize_image(image):
+    # Calculate new size as 75% of the original size
+    width, height = image.size
+    new_size = (int(width * 0.75), int(height * 0.75))
+
+    # Create resize transform
+    resize_transform = transforms.Resize(new_size)
+
+    # Apply the transform and return the result
+    return resize_transform(image)
+
 
 def get_dataset(dataset_identifier: str, processor: Any, tokenizer: PreTrainedTokenizerFast, augmentation: bool = False, aug_incr: int = 4,debug: bool = False) -> DatasetDict:
     """Get Dataset.
@@ -39,10 +50,11 @@ def get_dataset(dataset_identifier: str, processor: Any, tokenizer: PreTrainedTo
     :returns: Pre-processed dataset.
     """
     dataset: DatasetDict = load_dataset(dataset_identifier)
-    dataset = dataset.map(lambda e: {'image': e['image'] if e['image'].mode == 'RGB' else e['image'].convert('RGB'), 'text': e['text']})
     if debug:
         logging.info("Truncate dataset to 30 samples.")
         dataset = DatasetDict({k:Dataset.from_dict(dict(v[0:3])) for k,v in dataset.items()})
+    dataset = dataset.map(lambda e: {'image': e['image'] if e['image'].mode == 'RGB' else e['image'].convert('RGB'), 'text': e['text']})
+    dataset = dataset.map(lambda e: {'image': resize_image(e['image']), 'text': e['text']})
     if augmentation:
         logging.info("Apply Augmentation")
         logging.info("Augmentation will increase the dataset by a factor of %d.", aug_incr)

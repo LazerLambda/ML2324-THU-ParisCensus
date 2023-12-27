@@ -86,7 +86,6 @@ def main(cfg: DictConfig) -> None:
         eval_dataset=dataset_test,
         data_collator=default_data_collator,
     )
-
     trainer.train()
     metrics: dict = trainer.evaluate()
     logging.info(metrics)

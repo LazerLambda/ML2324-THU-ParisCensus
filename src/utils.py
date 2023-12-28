@@ -63,8 +63,8 @@ def get_dataset(dataset_identifier: str, processor: Any, tokenizer: PreTrainedTo
         dataset_train = new_data.map(lambda e: {'image':apply_augmentation(e['image'], augmentation, converter, piler), 'text': e['text']})
         dataset["train"] = dataset_train.shuffle()
     dataset = dataset.map(lambda e: {
-    "pixel_values": processor(e['image'], return_tensors="pt").pixel_values.squeeze(),
-    "labels": tokenizer(e['text'], return_tensors="pt", padding="max_length").input_ids.squeeze()})
+        "pixel_values": processor(e['image'], return_tensors="pt").pixel_values.squeeze(),
+        "labels": tokenizer(e['text'], return_tensors="pt", padding="max_length").input_ids.squeeze()})
     dataset = dataset.remove_columns(["image", "text"])
     dataset = dataset.with_format("torch")
     logging.info("Dataset loaded and processed")
